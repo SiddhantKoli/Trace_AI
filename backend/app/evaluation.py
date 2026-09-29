@@ -15,31 +15,31 @@ SCENARIO_CONFIGS = [
         "filename": "database_connection_exhaustion.log",
         "name": "Database Connection Pool Exhaustion",
         "expected_category": "database",
-        "anomaly_indicators": ["connection pool", "connection slots", "operationalerror", "databaseerror", "503 service unavailable", "pooltimeouterror"]
+        "true_anomaly_lines": list(range(7, 21)),
     },
     {
         "filename": "http_500_cluster.log",
         "name": "Repeated HTTP 500 Error Surge",
         "expected_category": "application",
-        "anomaly_indicators": ["keyerror", "typeerror", "http 500", "slo limit", "traceback", "p1 incident"]
+        "true_anomaly_lines": list(range(4, 16)),
     },
     {
         "filename": "high_memory_oom.log",
         "name": "High Memory Usage & OOM Killer",
         "expected_category": "resource_exhaustion",
-        "anomaly_indicators": ["outofmemoryerror", "oom-killer", "sigkill", "cgroup", "stop-the-world", "full gc"]
+        "true_anomaly_lines": list(range(3, 12)),
     },
     {
         "filename": "network_timeout_cascade.log",
         "name": "Network Timeout & Circuit Breaker Cascade",
         "expected_category": "networking",
-        "anomaly_indicators": ["connecttimeouterror", "readtimeout", "circuit breaker", "504 gateway timeout", "socket write timeout", "packet loss"]
+        "true_anomaly_lines": list(range(3, 12)),
     },
     {
         "filename": "normal_activity_baseline.log",
         "name": "Normal Baseline Operational Activity",
         "expected_category": "unknown",
-        "anomaly_indicators": []  # No anomalies expected
+        "true_anomaly_lines": [],
     }
 ]
 
@@ -82,19 +82,19 @@ class BenchmarkEvaluator:
             entries, parsed_count, rejected_count = self.parser.parse(content, config["filename"])
             anomalies = self.detector.detect(entries)
 
-            # Ground truth determination per log entry
-            indicators = [ind.lower() for ind in config["anomaly_indicators"]]
-            
+            # Ground truth is an independent, reviewed annotation of the
+            # benchmark fixture, never inferred from the detector's features
+            # or from severity alone.
+            true_anomaly_lines = set(config["true_anomaly_lines"])
+
             tp = 0
             fp = 0
             fn = 0
             tn = 0
 
             for entry, anom in zip(entries, anomalies):
-                msg_lower = entry["message"].lower()
-                is_true_anom = any(ind in msg_lower for ind in indicators) or entry["severity"] in ("CRITICAL", "FATAL")
-                
-                is_predicted_anom = anom["is_anomaly"] or anom["anomaly_score"] >= 0.70
+                is_true_anom = entry["line_number"] in true_anomaly_lines
+                is_predicted_anom = bool(anom["is_anomaly"])
 
                 if is_predicted_anom and is_true_anom:
                     tp += 1
@@ -125,7 +125,7 @@ class BenchmarkEvaluator:
             if incidents:
                 primary_inc = incidents[0]
                 diag_res = await self.jev.analyze_incident(primary_inc)
-                predicted_cat = primary_inc["category"]
+                predicted_cat = diag_res.get("category", "unknown")
                 diag_conf = diag_res.get("confidence", 0.0)
                 
                 if config["expected_category"] != "unknown":
@@ -155,7 +155,10 @@ class BenchmarkEvaluator:
                 predicted_category=predicted_cat,
                 expected_category=config["expected_category"],
                 diagnosis_confidence=round(diag_conf, 3),
-                details=f"TP: {tp}, FP: {fp}, FN: {fn}, TN: {tn}"
+                details=(
+                    f"TP: {tp}, FP: {fp}, FN: {fn}, TN: {tn}; "
+                    f"ground truth lines: {sorted(true_anomaly_lines)}"
+                )
             ))
 
         # Overall summary calculations

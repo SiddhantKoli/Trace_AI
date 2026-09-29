@@ -47,6 +47,8 @@ TRACE AI is a developer-centric log analysis and incident investigation platform
      4. Network Timeout & Circuit Breaker Cascade
      5. Normal Baseline Operational Activity
    - Computes empirical **Precision**, **Recall**, **F1-Score**, **False-Positive Rate (FPR)**, and **Diagnosis Accuracy** from actual test runs without hardcoding.
+   - Uses explicit, reviewed per-line annotations for point-anomaly ground truth; incident correlation is evaluated separately from anomaly detection.
+   - Reports low recall or false positives as measured rather than converting every error-severity line into a positive label.
 
 ---
 
@@ -125,6 +127,8 @@ Run the empirical evaluation benchmark directly from the CLI:
 ```
 Or navigate to the `/evaluation` page in the web interface and click **"Run Evaluation Suite"**.
 
+The benchmark intentionally separates three claims: Isolation Forest point anomalies, multi-error incident clusters, and diagnosis category matches. A demo diagnosis is an evidence-based hypothesis with a confidence cap; it is not a verified root cause and must be checked against metrics, traces, and deployment context.
+
 ---
 
 ## 📂 Project Structure
@@ -169,6 +173,6 @@ Trace AI/
 ---
 
 ## 🔒 Security & Privacy Posture
-- **Secret Isolation**: `JEV_API_KEY` is loaded exclusively on the FastAPI backend and never leaked to frontend browser bundles.
+- **Secret Handling**: `JEV_API_KEY` is submitted to the FastAPI backend when saved and remembered in browser `localStorage` so the settings field survives refreshes. Browser storage is not encrypted; use this only on a trusted device.
 - **Evidence Sanitization**: Log messages are scanned and redacted (`[REDACTED_TOKEN]`, `[REDACTED_PASSWORD]`, `[REDACTED_API_KEY]`) before being processed by AI models.
 - **Selective Payloads**: Only structured, relevant incident evidence lines are sent to external decision APIs—never whole log files.

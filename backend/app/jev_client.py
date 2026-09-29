@@ -58,6 +58,7 @@ class JevClient:
         # PRD Section 8: "If evidence is insufficient, display 'Insufficient evidence' rather than fabricate a diagnosis."
         if len(evidence_items) < 2:
             return {
+                "category": "unknown",
                 "possible_cause": "Insufficient evidence",
                 "confidence": 0.25,
                 "explanation": (
@@ -157,6 +158,7 @@ class JevClient:
         steps = self._get_recommended_steps_for_category(cat_answer)
 
         return {
+            "category": str(cat_answer),
             "possible_cause": f"Probable {cat_answer.replace('_', ' ').title()} Anomaly",
             "confidence": combined_conf,
             "explanation": explanation,
@@ -174,83 +176,39 @@ class JevClient:
         """
         category = incident.get("category", "unknown").lower()
         services = incident.get("services", ["system"])
-        primary_svc = services[0] if services else "service"
+        messages = [
+            str(item.get("entry", {}).get("message", "")).strip()
+            for item in incident.get("evidence_items", [])
+        ]
+        observed = [message for message in messages if message][:3]
+        evidence_excerpt = "; ".join(observed)
+        evidence_count = len([message for message in messages if message])
+        confidence = round(min(0.78, 0.42 + min(evidence_count, 6) * 0.05), 2)
 
-        if "database" in category:
-            cause = "PostgreSQL Connection Pool Exhaustion"
-            confidence = 0.94
-            explanation = (
-                "[DEMO MODE - DETERMINISTIC MOCK] Jev decision model detected rapid database connection slot starvation "
-                f"affecting {', '.join(services)}. Evidence exhibits 'FATAL: remaining connection slots are reserved' "
-                "followed by downstream connection queue pool timeouts and HTTP 503 cascades."
-            )
-            uncertainty = "LOW: Strong evidence matches database pool starvation signature"
-            steps = [
-                "Inspect active PostgreSQL connections (`SELECT * FROM pg_stat_activity WHERE state != 'idle';`)",
-                "Increase max_connections or tune connection pooling (e.g. PgBouncer/HikariCP pool limit)",
-                "Investigate unclosed connections or long-running transactions in checkout workflows",
-                "Check for connection leak after recent code deployments"
-            ]
-        elif "resource" in category or "oom" in category:
-            cause = "JVM Heap Space Exhaustion & Linux OOM Killer Invocation"
-            confidence = 0.96
-            explanation = (
-                "[DEMO MODE - DETERMINISTIC MOCK] Jev decision model identified major GC degradation culminating in "
-                f"java.lang.OutOfMemoryError and kernel SIGKILL code 137 on {primary_svc}. "
-                "Memory allocation exceeded container cgroup threshold."
-            )
-            uncertainty = "LOW: Explicit kernel oom-killer and Java heap space trace matched"
-            steps = [
-                f"Inspect JVM heap dump on {primary_svc} to identify retained memory leak suspects",
-                "Increase container memory limit in Kubernetes pod/Docker spec",
-                "Optimize batch processing partition size to prevent buffer bloat",
-                "Verify G1 GC tuning parameters and stop-the-world frequency"
-            ]
-        elif "network" in category or "timeout" in category:
-            cause = "External Egress Gateway Timeout & Cascading Circuit Breaker Trip"
-            confidence = 0.91
-            explanation = (
-                "[DEMO MODE - DETERMINISTIC MOCK] Jev decision model detected TCP handshake latency spike "
-                "exceeding 4800ms, followed by socket timeouts to external payment gateway and cascading circuit breaker trip."
-            )
-            uncertainty = "MEDIUM: External dependency failure verified; root cause in partner network pending verification"
-            steps = [
-                "Check external provider status page and endpoint reachability",
-                "Verify egress NAT gateway bandwidth and socket connection quotas",
-                "Confirm fallback mode behavior for circuit breaker",
-                "Review retry backoff strategy to avoid retry amplification storms"
-            ]
-        elif "application" in category or "500" in category:
-            cause = "Unhandled Exception in Application Logic (KeyError / NullPointer)"
-            confidence = 0.93
-            explanation = (
-                f"[DEMO MODE - DETERMINISTIC MOCK] Jev decision model detected unhandled exception spike on {primary_svc} "
-                "immediately following canary deployment v2.4.1. Rapidly caused HTTP 500 error rate to breach SLO limit (5.8%)."
-            )
-            uncertainty = "LOW: Correlation with recent deployment and explicit unhandled exception stack traces"
-            steps = [
-                f"Roll back canary release v2.4.1 for {primary_svc} immediately",
-                "Verify schema consistency for incoming user preferences payload",
-                "Add defensive null-check and default fallbacks in recommendations pipeline",
-                "Add automated regression test covering missing key conditions"
-            ]
-        else:
-            cause = "Unclassified System Anomaly"
-            confidence = 0.60
-            explanation = (
-                "[DEMO MODE - DETERMINISTIC MOCK] Anomalous log patterns detected across multiple components. "
-                "Insufficient specific signatures to confirm single root cause."
-            )
-            uncertainty = "HIGH: Ambiguous multi-system deviation. Manual review strongly recommended."
-            steps = [
-                "Inspect related logs in monitoring dashboard",
-                "Correlate with system deploy timeline and config updates",
-                "Check infrastructure CPU, disk, and network interfaces"
-            ]
+        category_labels = {
+            "database": "database connection-pool exhaustion pattern",
+            "resource_exhaustion": "memory exhaustion pattern",
+            "networking": "network timeout and circuit-breaker pattern",
+            "application": "application exception and HTTP 5xx pattern",
+        }
+        cause = f"Observed {category_labels.get(category, 'unclassified system anomaly pattern')}"
+        explanation = (
+            "[DEMO MODE - EVIDENCE-BASED HEURISTIC] This is a hypothesis derived from the "
+            f"{evidence_count} correlated log entries across {len(services)} service(s). "
+            f"Observed signals: {evidence_excerpt or 'No readable message evidence'}. "
+            "The log evidence does not establish root cause or causality; validate with metrics, traces, and deployment context."
+        )
+        uncertainty = (
+            "MEDIUM: Demo classification is based only on correlated log text and severity; "
+            "root cause remains unverified."
+        )
+        steps = self._get_recommended_steps_for_category(category)
 
         mock_raw = {
             "mode": "DEMO_MODE",
-            "note": "Deterministic response for testing without live API keys",
+            "note": "Evidence-based heuristic response for testing without live API keys; not a verified diagnosis",
+            "observed_signals": observed,
+            "confidence_cap": 0.78,
             "simulated_answers": {
                 "category": {"answer": category, "confidence": confidence},
                 "severity": {"answer": incident.get("severity", "WARNING"), "confidence": 0.88},
@@ -260,6 +218,7 @@ class JevClient:
         }
 
         return {
+            "category": category,
             "possible_cause": cause,
             "confidence": confidence,
             "explanation": explanation,

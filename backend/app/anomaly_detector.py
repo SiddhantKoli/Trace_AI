@@ -93,20 +93,20 @@ class AnomalyDetector:
 
         X = df[feature_cols].values
 
-        # If very few samples (e.g. < 4), Isolation Forest cannot reliably fit
+        # With too little history there is no meaningful baseline to learn from.
+        # Returning an explicit indeterminate result is safer than labeling a
+        # high-severity event anomalous without a learned comparison set.
         if n_samples < 4:
             results = []
             for _, row in df.iterrows():
-                is_err = row["is_error"] == 1.0
-                score = 0.85 if is_err else 0.15
                 results.append({
-                    "anomaly_score": round(score, 4),
-                    "is_anomaly": is_err,
+                    "anomaly_score": 0.0,
+                    "is_anomaly": False,
                     "feature_contributions": {
                         "severity": row["severity"],
                         "error_frequency": int(row["rolling_error_count_60s"]),
                         "burst_events_60s": int(row["rolling_count_60s"]),
-                        "primary_driver": "High severity event" if is_err else "Routine activity"
+                        "primary_driver": "Insufficient baseline for anomaly detection"
                     }
                 })
             return results
@@ -135,16 +135,10 @@ class AnomalyDetector:
         results = []
         for i, row in df.iterrows():
             norm_score = float(normalized_scores[i])
-            is_anom = bool(predictions[i] == -1 or (row["severity_weight"] >= 0.8 and norm_score > 0.55))
-            
-            # Boost score slightly if severity is CRITICAL or ERROR
-            if row["severity"] in ("CRITICAL", "FATAL"):
-                norm_score = max(norm_score, 0.88)
-                is_anom = True
-            elif row["severity"] == "ERROR":
-                norm_score = max(norm_score, 0.72)
-                if row["rolling_error_count_60s"] > 2:
-                    is_anom = True
+            # Isolation Forest's binary prediction is the source of truth for
+            # is_anomaly. Severity remains a feature and explanation signal,
+            # but it cannot override the learned decision.
+            is_anom = bool(predictions[i] == -1)
 
             # Determine primary contributing factor for explainability
             reasons = []

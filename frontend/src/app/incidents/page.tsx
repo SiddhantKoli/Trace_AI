@@ -171,7 +171,7 @@ export default function IncidentsPage() {
                   <div className="bg-[#161a22] p-3 rounded border border-[#262c38] mb-3">
                     <div className="flex items-center justify-between text-xs mb-1">
                       <span className="font-semibold text-slate-200">
-                        AI Probable Cause: <span className="text-amber-300">{inc.diagnosis.possible_cause}</span>
+                        Evidence-based hypothesis: <span className="text-amber-300">{inc.diagnosis.possible_cause}</span>
                       </span>
                       <span className="font-mono text-emerald-400 font-bold">
                         {(inc.diagnosis.confidence * 100).toFixed(0)}% Confidence

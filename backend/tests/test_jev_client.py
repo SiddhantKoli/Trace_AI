@@ -66,9 +66,10 @@ async def test_jev_client_demo_mode_deterministic():
 
     result = await client.analyze_incident(db_incident)
     assert result["is_demo_mode"] is True
-    assert "DEMO MODE - DETERMINISTIC MOCK" in result["explanation"]
-    assert "Connection Pool" in result["possible_cause"]
-    assert result["confidence"] >= 0.9
+    assert "DEMO MODE - EVIDENCE-BASED HEURISTIC" in result["explanation"]
+    assert "connection-pool exhaustion pattern" in result["possible_cause"]
+    assert result["confidence"] <= 0.78
+    assert "root cause" in result["explanation"]
     assert len(result["recommended_steps"]) > 0
 
 

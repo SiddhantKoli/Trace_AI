@@ -164,7 +164,7 @@ export default function IncidentDetailPage() {
               </h2>
               {isDemo && (
                 <span className="px-2 py-0.5 rounded text-[10px] font-mono bg-amber-950/40 text-amber-300 border border-amber-800/50">
-                  DEMO MODE (Deterministic Mock)
+                  DEMO MODE (Evidence-based heuristic)
                 </span>
               )}
             </div>
@@ -185,9 +185,9 @@ export default function IncidentDetailPage() {
 
         {diag ? (
           <div className="space-y-4 text-xs">
-            {/* Probable Cause */}
+            {/* Evidence-based hypothesis */}
             <div className="bg-[#161a22] p-4 rounded-md border border-[#252b38]">
-              <span className="text-[11px] text-slate-400 font-mono block uppercase">Probable Root Cause</span>
+              <span className="text-[11px] text-slate-400 font-mono block uppercase">Evidence-based hypothesis</span>
               <p className="text-sm font-bold text-amber-300 mt-0.5">
                 {diag.possible_cause}
               </p>

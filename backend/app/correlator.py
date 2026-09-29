@@ -30,7 +30,7 @@ def infer_preliminary_category(text: str) -> str:
     for cat, keywords in CATEGORY_RULES.items():
         if any(kw in lower for kw in keywords):
             return cat
-    return "application"
+    return "unknown"
 
 
 class IncidentCorrelator:
@@ -58,15 +58,26 @@ class IncidentCorrelator:
         if not entries:
             return []
 
-        # Identify candidate entries for correlation:
-        # PRD Section 4.2: 'Distinguish anomalies from confirmed incidents.'
-        # Require actual error/critical severity OR high-confidence warning anomaly.
+        # Identify candidate entries from model evidence. Severity is useful
+        # context, but it is not sufficient on its own to create an incident.
+        error_times = [
+            entry["timestamp"]
+            for entry in entries
+            if entry["severity"] in ("ERROR", "CRITICAL", "FATAL")
+        ]
+
+        def belongs_to_error_burst(entry: Dict[str, Any]) -> bool:
+            if entry["severity"] not in ("ERROR", "CRITICAL", "FATAL"):
+                return False
+            nearby_errors = sum(
+                abs((entry["timestamp"] - other_time).total_seconds()) <= 60
+                for other_time in error_times
+            )
+            return nearby_errors >= 2
+
         candidates = []
         for entry, anom in zip(entries, anomaly_results):
-            is_err_sev = entry["severity"] in ("ERROR", "CRITICAL", "FATAL")
-            is_high_anom_warn = entry["severity"] == "WARNING" and anom["anomaly_score"] >= 0.70
-            
-            if is_err_sev or is_high_anom_warn:
+            if anom.get("is_anomaly", False) or belongs_to_error_burst(entry):
                 candidates.append({
                     "entry": entry,
                     "anomaly": anom
@@ -100,6 +111,15 @@ class IncidentCorrelator:
         incidents = []
         for idx, cluster in enumerate(clusters, start=1):
             if len(cluster) == 0:
+                continue
+
+            # A pair of isolated model outliers in otherwise healthy INFO
+            # traffic is not enough to call an incident. Require at least one
+            # error-level event so the incident represents operational impact.
+            if not any(
+                c["entry"]["severity"] in ("ERROR", "CRITICAL", "FATAL")
+                for c in cluster
+            ):
                 continue
 
             # Gather metadata across cluster
