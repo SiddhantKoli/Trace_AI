@@ -101,3 +101,34 @@ def test_jev_client_evidence_sanitization():
     structured = client.build_structured_evidence(incident)
     assert "INCIDENT_SERVICES: auth" in structured
     assert "CHRONOLOGICAL_EVIDENCE_SEQUENCE:" in structured
+
+
+def test_jev_client_rejects_malformed_live_response():
+    client = JevClient(demo_mode=False, api_key="test-key")
+    result = client._synthesize_live_response(
+        {"answers": {"category": {"answer": "database"}}},
+        {"category": "database"},
+    )
+
+    assert result["category"] == "unknown"
+    assert result["confidence"] == 0.0
+    assert "could not be validated" in result["explanation"]
+    assert "manual review required" in result["uncertainty"]
+
+
+def test_jev_client_labels_live_confidence_as_uncalibrated():
+    client = JevClient(demo_mode=False, api_key="test-key")
+    result = client._synthesize_live_response(
+        {
+            "answers": {
+                "category": {"answer": "database", "confidence": 0.91},
+                "severity": {"answer": "WARNING", "confidence": 0.63},
+                "requires_immediate_action": {"probability": 0.7},
+                "impact_score": {"score": 4},
+            }
+        },
+        {"category": "database"},
+    )
+
+    assert result["confidence"] == 0.91
+    assert "not calibrated" in result["uncertainty"]

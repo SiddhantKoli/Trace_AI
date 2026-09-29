@@ -132,19 +132,39 @@ class JevClient:
         return self._generate_deterministic_demo_response(incident)
 
     def _synthesize_live_response(self, jev_response: Dict[str, Any], incident: Dict[str, Any]) -> Dict[str, Any]:
-        """Synthesizes Jev System One answers into human-readable diagnosis."""
-        answers = jev_response.get("answers", {})
-        
-        cat_answer = answers.get("category", {}).get("answer", incident.get("category", "unknown"))
-        cat_conf = answers.get("category", {}).get("confidence", 0.75)
-        
-        sev_answer = answers.get("severity", {}).get("answer", incident.get("severity", "WARNING"))
-        sev_conf = answers.get("severity", {}).get("confidence", 0.8)
-        
-        action_prob = answers.get("requires_immediate_action", {}).get("probability", 0.5)
-        impact_score = answers.get("impact_score", {}).get("score", 3)
+        """Synthesize a validated Jev response without claiming calibration."""
+        answers = jev_response.get("answers")
+        if not isinstance(answers, dict):
+            return self._invalid_live_response("Missing answers object", jev_response)
 
-        combined_conf = round(float((cat_conf + sev_conf) / 2.0), 3)
+        category_answer = answers.get("category")
+        severity_answer = answers.get("severity")
+        action_answer = answers.get("requires_immediate_action")
+        impact_answer = answers.get("impact_score")
+        if not all(isinstance(value, dict) for value in (category_answer, severity_answer, action_answer, impact_answer)):
+            return self._invalid_live_response("Missing or malformed answer fields", jev_response)
+
+        allowed_categories = {"database", "networking", "application", "resource_exhaustion", "unknown"}
+        allowed_severities = {"CRITICAL", "WARNING", "INFO"}
+        cat_answer = str(category_answer.get("answer", "unknown")).lower()
+        sev_answer = str(severity_answer.get("answer", "WARNING")).upper()
+        if cat_answer not in allowed_categories or sev_answer not in allowed_severities:
+            return self._invalid_live_response("Unsupported category or severity value", jev_response)
+
+        try:
+            cat_conf = self._bounded_number(category_answer.get("confidence"), "category confidence")
+            sev_conf = self._bounded_number(severity_answer.get("confidence"), "severity confidence")
+            action_prob = self._bounded_number(action_answer.get("probability"), "action probability")
+            impact_score = float(impact_answer.get("score"))
+        except (TypeError, ValueError):
+            return self._invalid_live_response("Confidence or score fields are not numeric", jev_response)
+
+        if not 1 <= impact_score <= 5:
+            return self._invalid_live_response("Impact score is outside the supported 1-5 range", jev_response)
+
+        # This confidence describes Jev's category answer only. No calibration
+        # claim is made until the application has a reliability study.
+        diagnosis_confidence = round(cat_conf, 3)
 
         explanation = (
             f"TypeSafe Jev System One classified incident under '{cat_answer}' with {round(cat_conf * 100, 1)}% confidence. "
@@ -152,20 +172,46 @@ class JevClient:
             f"Probability of immediate operational remediation requirement: {round(action_prob * 100, 1)}%."
         )
 
-        uncertainty_level = "LOW" if combined_conf >= 0.85 else ("MEDIUM" if combined_conf >= 0.65 else "HIGH")
-        uncertainty = f"{uncertainty_level} (Calibrated model confidence: {round(combined_conf * 100, 1)}%)"
+        uncertainty_level = "LOW" if diagnosis_confidence >= 0.85 else ("MEDIUM" if diagnosis_confidence >= 0.65 else "HIGH")
+        uncertainty = f"{uncertainty_level} (Model-reported category confidence; not calibrated: {round(diagnosis_confidence * 100, 1)}%)"
 
         steps = self._get_recommended_steps_for_category(cat_answer)
 
         return {
             "category": str(cat_answer),
             "possible_cause": f"Probable {cat_answer.replace('_', ' ').title()} Anomaly",
-            "confidence": combined_conf,
+            "confidence": diagnosis_confidence,
             "explanation": explanation,
             "uncertainty": uncertainty,
             "recommended_steps": steps,
             "is_demo_mode": False,
             "raw_jev_response": jev_response
+        }
+
+    @staticmethod
+    def _bounded_number(value: Any, field_name: str) -> float:
+        if isinstance(value, bool) or value is None:
+            raise ValueError(f"{field_name} is missing")
+        number = float(value)
+        if not 0.0 <= number <= 1.0:
+            raise ValueError(f"{field_name} is outside the 0-1 range")
+        return number
+
+    @staticmethod
+    def _invalid_live_response(reason: str, raw_response: Dict[str, Any]) -> Dict[str, Any]:
+        return {
+            "category": "unknown",
+            "possible_cause": "Unverified Jev response",
+            "confidence": 0.0,
+            "explanation": "The live Jev response could not be validated, so no diagnosis was asserted.",
+            "uncertainty": f"HIGH: {reason}; manual review required",
+            "recommended_steps": [
+                "Review the raw response and request a valid Jev answer",
+                "Inspect the incident evidence directly",
+                "Validate with metrics and traces before taking action",
+            ],
+            "is_demo_mode": False,
+            "raw_jev_response": {"validation_error": reason, "response": raw_response},
         }
 
     def _generate_deterministic_demo_response(self, incident: Dict[str, Any]) -> Dict[str, Any]:

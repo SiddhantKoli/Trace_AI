@@ -62,3 +62,67 @@ def test_correlator_window_clustering():
     
     # Check causation disclaimer presence
     assert "not verified causality" in incidents[0]["summary"]
+
+
+def test_correlator_reports_explicit_dependency_without_claiming_cascade():
+    correlator = IncidentCorrelator(window_seconds=60)
+    base_time = datetime(2026, 9, 29, 14, 0, 0)
+    entries = [
+        {
+            "line_number": 1,
+            "timestamp": base_time,
+            "severity": "ERROR",
+            "service": "order-service",
+            "message": "depends on postgres connection pool",
+            "depends_on": ["postgres"],
+            "raw_text": "log1",
+        },
+        {
+            "line_number": 2,
+            "timestamp": base_time + timedelta(seconds=5),
+            "severity": "ERROR",
+            "service": "postgres",
+            "message": "connection slots exhausted",
+            "raw_text": "log2",
+        },
+    ]
+
+    incidents = correlator.correlate(
+        entries,
+        [{"is_anomaly": True, "anomaly_score": 0.9}] * 2,
+    )
+
+    assert len(incidents) == 1
+    assert incidents[0]["dependency_edges"] == [{"source": "order-service", "target": "postgres"}]
+    assert incidents[0]["correlation_basis"] == "explicit_dependency_and_temporal"
+    assert "cascade" not in incidents[0]["title"].lower()
+
+
+def test_correlator_does_not_merge_unrelated_categories_by_time_alone():
+    correlator = IncidentCorrelator(window_seconds=60)
+    base_time = datetime(2026, 9, 29, 14, 0, 0)
+    entries = [
+        {
+            "line_number": 1,
+            "timestamp": base_time,
+            "severity": "ERROR",
+            "service": "postgres",
+            "message": "connection slots exhausted",
+            "raw_text": "log1",
+        },
+        {
+            "line_number": 2,
+            "timestamp": base_time + timedelta(seconds=5),
+            "severity": "ERROR",
+            "service": "payment-gateway",
+            "message": "ConnectTimeoutError to external acquirer",
+            "raw_text": "log2",
+        },
+    ]
+
+    incidents = correlator.correlate(
+        entries,
+        [{"is_anomaly": True, "anomaly_score": 0.9}] * 2,
+    )
+
+    assert len(incidents) == 2

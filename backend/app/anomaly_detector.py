@@ -17,7 +17,8 @@ class AnomalyDetector:
     """
     ML Anomaly Detector using scikit-learn Isolation Forest.
     Extracts time-based, frequency-based, and severity-based features.
-    Provides normalized anomaly scores (0.0 to 1.0) and feature explanations.
+    Provides relative within-file anomaly scores (0.0 to 1.0) and feature explanations.
+    Scores are ranking signals, not calibrated probabilities.
     """
 
     def __init__(self, contamination: float = 0.08, random_state: int = 42):
@@ -124,7 +125,8 @@ class AnomalyDetector:
         raw_scores = model.decision_function(X)  # lower = more abnormal
         predictions = model.predict(X)          # -1 = anomaly, 1 = normal
 
-        # Normalize score into [0.0, 1.0] where 1.0 is highest anomaly
+        # Normalize within this file into [0.0, 1.0] where 1.0 is the most
+        # abnormal observed row. This is a ranking signal, not a probability.
         # Invert raw scores: raw_scores are typically in range [-0.5, 0.5]
         min_s = float(np.min(raw_scores))
         max_s = float(np.max(raw_scores))
@@ -161,6 +163,7 @@ class AnomalyDetector:
                     "error_frequency_60s": int(row["rolling_error_count_60s"]),
                     "burst_events_60s": int(row["rolling_count_60s"]),
                     "time_delta_seconds": round(float(row["time_delta_prev"]), 2),
+                    "score_semantics": "Relative within-file Isolation Forest score; not a probability",
                     "primary_driver": primary_driver
                 }
             })

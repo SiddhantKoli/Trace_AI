@@ -60,7 +60,7 @@ class Anomaly(Base):
     id = Column(String(36), primary_key=True, default=generate_uuid)
     run_id = Column(String(36), ForeignKey("analysis_runs.id"), nullable=False, index=True)
     log_id = Column(String(36), ForeignKey("log_entries.id"), nullable=False, index=True)
-    anomaly_score = Column(Float, nullable=False)  # Normalized 0.0 - 1.0 (higher = more anomalous)
+    anomaly_score = Column(Float, nullable=False)  # Relative within-file score, not a calibrated probability
     is_anomaly = Column(Boolean, default=False)
     detection_time = Column(DateTime, default=datetime.utcnow)
     feature_contributions = Column(JSON, nullable=True)  # Dict of feature names to values/weights

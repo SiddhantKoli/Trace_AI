@@ -22,8 +22,7 @@ import {
   YAxis, 
   CartesianGrid, 
   Tooltip, 
-  ResponsiveContainer, 
-  ReferenceLine 
+  ResponsiveContainer
 } from "recharts";
 import { api, AnalysisRun, LogEntry, Anomaly } from "@/lib/api";
 import { SeverityBadge } from "@/components/SeverityBadge";
@@ -204,10 +203,10 @@ function AnalysisContent() {
             <div className="flex items-center justify-between mb-4">
               <div>
                 <h3 className="text-sm font-semibold text-slate-200">
-                  Isolation Forest Anomaly Score Spectrum
+                  Isolation Forest Relative Score Spectrum
                 </h3>
                 <p className="text-[11px] text-slate-400">
-                  Calculated normalized outlier probability per log entry line. Red dashed line indicates anomaly classification threshold (0.70).
+                  Scores rank each log within this uploaded file; they are not probabilities. The model flag is shown in the log table.
                 </p>
               </div>
               <div className="flex items-center gap-2 text-xs font-mono text-slate-400">
@@ -236,7 +235,6 @@ function AnalysisContent() {
                       stroke="#64748b" 
                       tick={{ fontSize: 10 }}
                     />
-                    <ReferenceLine y={0.70} stroke="#ef4444" strokeDasharray="3 3" label={{ value: "Threshold (0.70)", fill: "#ef4444", fontSize: 10, position: "top" }} />
                     <Tooltip 
                       cursor={{ strokeDasharray: "3 3" }}
                       content={({ payload }) => {
@@ -245,7 +243,7 @@ function AnalysisContent() {
                         return (
                           <div className="bg-[#161a22] border border-[#2c3442] p-2.5 rounded text-xs text-slate-200 shadow-md">
                             <p className="font-bold text-slate-100">Line #{data.line} &bull; {data.service}</p>
-                            <p className="text-amber-400 font-mono text-[11px]">Score: {data.score}</p>
+                            <p className="text-amber-400 font-mono text-[11px]">Relative score: {data.score}</p>
                             <p className="text-slate-400 text-[11px] mt-1">{data.driver}</p>
                           </div>
                         );
@@ -330,7 +328,7 @@ function AnalysisContent() {
                     <th className="py-2.5 px-3 w-24">Severity</th>
                     <th className="py-2.5 px-3 w-32">Service</th>
                     <th className="py-2.5 px-3">Message</th>
-                    <th className="py-2.5 px-3 w-28 text-right">Anomaly Score</th>
+                    <th className="py-2.5 px-3 w-28 text-right">Relative Score</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-[#1e232d] font-mono text-[11px]">
