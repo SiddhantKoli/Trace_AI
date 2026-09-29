@@ -16,6 +16,7 @@ class AnalysisRun(Base):
     filename = Column(String(255), nullable=False)
     file_size_bytes = Column(Integer, default=0)
     status = Column(String(50), default="PENDING")  # PENDING, PROCESSING, COMPLETED, FAILED
+    data_mode = Column(String(10), default="real", index=True)  # demo or real
     error_message = Column(Text, nullable=True)
     
     total_entries = Column(Integer, default=0)

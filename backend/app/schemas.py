@@ -95,6 +95,7 @@ class AnalysisRunOut(BaseModel):
     filename: str
     file_size_bytes: int
     status: str
+    data_mode: str = "real"
     error_message: Optional[str] = None
     total_entries: int
     parsed_count: int

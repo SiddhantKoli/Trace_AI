@@ -2,8 +2,9 @@ from fastapi import APIRouter, Depends, HTTPException, Response
 from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session, joinedload
 
+from app.config import active_data_mode
 from app.database import get_db
-from app.models import Incident, IncidentEvidence
+from app.models import AnalysisRun, Incident, IncidentEvidence
 from app.report_generator import report_generator
 from app.schemas import IncidentOut
 
@@ -17,11 +18,12 @@ def export_incident_pdf(incident_id: str, db: Session = Depends(get_db)):
     """
     incident = (
         db.query(Incident)
+        .join(AnalysisRun, Incident.run_id == AnalysisRun.id)
         .options(
             joinedload(Incident.evidence).joinedload(IncidentEvidence.log),
             joinedload(Incident.diagnosis)
         )
-        .filter(Incident.id == incident_id)
+        .filter(Incident.id == incident_id, AnalysisRun.data_mode == active_data_mode())
         .first()
     )
     if not incident:
@@ -48,11 +50,12 @@ def export_incident_json(incident_id: str, db: Session = Depends(get_db)):
     """
     incident = (
         db.query(Incident)
+        .join(AnalysisRun, Incident.run_id == AnalysisRun.id)
         .options(
             joinedload(Incident.evidence).joinedload(IncidentEvidence.log),
             joinedload(Incident.diagnosis)
         )
-        .filter(Incident.id == incident_id)
+        .filter(Incident.id == incident_id, AnalysisRun.data_mode == active_data_mode())
         .first()
     )
     if not incident:

@@ -26,6 +26,7 @@ export default function UploadPage() {
   const [isProcessing, setIsProcessing] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [resultRun, setResultRun] = useState<AnalysisRun | null>(null);
+  const [demoMode, setDemoMode] = useState(true);
 
   // Advanced ML settings
   const [showAdvanced, setShowAdvanced] = useState(false);
@@ -37,7 +38,15 @@ export default function UploadPage() {
   const [sampleLoadingId, setSampleLoadingId] = useState<string | null>(null);
 
   useEffect(() => {
-    api.getSamples().then(setSamples).catch(console.error);
+    api.getSettings()
+      .then((data) => {
+        setDemoMode(data.demo_mode);
+        if (data.demo_mode) {
+          return api.getSamples().then(setSamples);
+        }
+        return undefined;
+      })
+      .catch(console.error);
   }, []);
 
   const handleFileDrop = (e: React.DragEvent<HTMLDivElement>) => {
@@ -309,6 +318,7 @@ export default function UploadPage() {
       </form>
 
       {/* Sample Scenarios Catalogue */}
+      {demoMode ? (
       <div className="space-y-4 pt-4 border-t border-[#222731]">
         <div>
           <h2 className="text-base font-semibold text-slate-200">
@@ -361,6 +371,16 @@ export default function UploadPage() {
           })}
         </div>
       </div>
+      ) : (
+        <div className="pt-4 border-t border-[#222731]">
+          <div className="bg-[#12151b] border border-sky-900/60 rounded-lg p-4">
+            <h2 className="text-sm font-semibold text-slate-200">Real Data Mode is active</h2>
+            <p className="text-xs text-slate-400 mt-1">
+              Demo scenarios are hidden. Upload a real log file above to populate the dashboard and incident views.
+            </p>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

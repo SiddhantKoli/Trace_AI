@@ -87,6 +87,8 @@ Key configuration parameters:
 - `DEFAULT_CONTAMINATION`: `0.08` (8% outlier sensitivity).
 - `DEFAULT_CORRELATION_WINDOW_SECONDS`: `120` (2-minute incident window).
 
+The Settings page exposes the same choice as a Demo Data / Real Data toggle. Demo mode shows bundled scenario runs. Real mode hides those runs and starts the dashboard at zero until you upload a real log file. Switching modes does not delete either dataset; it changes which namespace is visible.
+
 ### 2. Backend Setup
 From the repository root:
 ```powershell

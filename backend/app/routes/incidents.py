@@ -3,8 +3,9 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import desc
 
+from app.config import active_data_mode
 from app.database import get_db
-from app.models import Incident, IncidentEvidence, Diagnosis
+from app.models import AnalysisRun, Incident, IncidentEvidence, Diagnosis
 from app.schemas import IncidentOut, IncidentUpdate
 
 router = APIRouter(prefix="/incidents", tags=["Incidents"])
@@ -26,10 +27,12 @@ def list_incidents(
     """
     query = (
         db.query(Incident)
+        .join(AnalysisRun, Incident.run_id == AnalysisRun.id)
         .options(
             joinedload(Incident.evidence).joinedload(IncidentEvidence.log),
             joinedload(Incident.diagnosis)
         )
+        .filter(AnalysisRun.data_mode == active_data_mode())
     )
 
     if run_id:
@@ -61,7 +64,8 @@ def get_incident(incident_id: str, db: Session = Depends(get_db)):
             joinedload(Incident.evidence).joinedload(IncidentEvidence.log),
             joinedload(Incident.diagnosis)
         )
-        .filter(Incident.id == incident_id)
+        .join(AnalysisRun, Incident.run_id == AnalysisRun.id)
+        .filter(Incident.id == incident_id, AnalysisRun.data_mode == active_data_mode())
         .first()
     )
     if not incident:
@@ -78,7 +82,12 @@ def update_incident(
     """
     Update incident status (e.g., CONFIRMED, RESOLVED, MANUAL_REVIEW).
     """
-    incident = db.query(Incident).filter(Incident.id == incident_id).first()
+    incident = (
+        db.query(Incident)
+        .join(AnalysisRun, Incident.run_id == AnalysisRun.id)
+        .filter(Incident.id == incident_id, AnalysisRun.data_mode == active_data_mode())
+        .first()
+    )
     if not incident:
         raise HTTPException(status_code=404, detail="Incident not found")
 

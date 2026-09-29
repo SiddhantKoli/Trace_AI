@@ -3,6 +3,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 from sqlalchemy import func, desc
 
+from app.config import active_data_mode
 from app.database import get_db
 from app.models import AnalysisRun, LogEntry, Anomaly, Incident, Diagnosis
 from app.schemas import AnalysisRunOut, AnalysisRunDetail, LogEntryOut, AnomalyOut, DashboardStats, IncidentOut
@@ -17,14 +18,25 @@ def list_analysis_runs(
     db: Session = Depends(get_db)
 ):
     """Lists recent log analysis runs."""
-    runs = db.query(AnalysisRun).order_by(desc(AnalysisRun.start_time)).offset(offset).limit(limit).all()
+    runs = (
+        db.query(AnalysisRun)
+        .filter(AnalysisRun.data_mode == active_data_mode())
+        .order_by(desc(AnalysisRun.start_time))
+        .offset(offset)
+        .limit(limit)
+        .all()
+    )
     return runs
 
 
 @router.get("/runs/{run_id}", response_model=AnalysisRunDetail)
 def get_analysis_run(run_id: str, db: Session = Depends(get_db)):
     """Fetches comprehensive details for a specific run."""
-    run = db.query(AnalysisRun).filter(AnalysisRun.id == run_id).first()
+    run = (
+        db.query(AnalysisRun)
+        .filter(AnalysisRun.id == run_id, AnalysisRun.data_mode == active_data_mode())
+        .first()
+    )
     if not run:
         raise HTTPException(status_code=404, detail="Analysis run not found")
     return run
@@ -43,6 +55,14 @@ def get_run_logs(
     """
     Paginated logs for a run with multi-criteria filtering.
     """
+    run = (
+        db.query(AnalysisRun)
+        .filter(AnalysisRun.id == run_id, AnalysisRun.data_mode == active_data_mode())
+        .first()
+    )
+    if not run:
+        raise HTTPException(status_code=404, detail="Analysis run not found in the active data mode")
+
     query = db.query(LogEntry).filter(LogEntry.run_id == run_id)
 
     if severity:
@@ -106,7 +126,12 @@ def get_run_anomalies(
     """
     anomalies = (
         db.query(Anomaly)
-        .filter(Anomaly.run_id == run_id, Anomaly.anomaly_score >= min_score)
+        .join(AnalysisRun, Anomaly.run_id == AnalysisRun.id)
+        .filter(
+            Anomaly.run_id == run_id,
+            AnalysisRun.data_mode == active_data_mode(),
+            Anomaly.anomaly_score >= min_score,
+        )
         .order_by(desc(Anomaly.anomaly_score))
         .all()
     )
@@ -125,9 +150,21 @@ def get_dashboard_stats(
     # If run_id is not specified, use latest run or aggregate across runs
     target_run = None
     if run_id:
-        target_run = db.query(AnalysisRun).filter(AnalysisRun.id == run_id).first()
+        target_run = (
+            db.query(AnalysisRun)
+            .filter(AnalysisRun.id == run_id, AnalysisRun.data_mode == active_data_mode())
+            .first()
+        )
     else:
-        target_run = db.query(AnalysisRun).filter(AnalysisRun.status == "COMPLETED").order_by(desc(AnalysisRun.start_time)).first()
+        target_run = (
+            db.query(AnalysisRun)
+            .filter(
+                AnalysisRun.status == "COMPLETED",
+                AnalysisRun.data_mode == active_data_mode(),
+            )
+            .order_by(desc(AnalysisRun.start_time))
+            .first()
+        )
 
     current_run_id = target_run.id if target_run else None
 
@@ -140,6 +177,10 @@ def get_dashboard_stats(
         logs_q = logs_q.filter(LogEntry.run_id == current_run_id)
         anom_q = anom_q.filter(Anomaly.run_id == current_run_id)
         inc_q = inc_q.filter(Incident.run_id == current_run_id)
+    else:
+        logs_q = logs_q.join(AnalysisRun, LogEntry.run_id == AnalysisRun.id).filter(AnalysisRun.data_mode == active_data_mode())
+        anom_q = anom_q.join(AnalysisRun, Anomaly.run_id == AnalysisRun.id).filter(AnalysisRun.data_mode == active_data_mode())
+        inc_q = inc_q.join(AnalysisRun, Incident.run_id == AnalysisRun.id).filter(AnalysisRun.data_mode == active_data_mode())
 
     total_logs = logs_q.count()
     total_anomalies = anom_q.filter(Anomaly.is_anomaly == True).count()

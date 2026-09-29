@@ -93,7 +93,7 @@ export const Navbar = () => {
                     health.demo_mode ? "bg-amber-400" : "bg-emerald-400"
                   }`}
                 />
-                {health.demo_mode ? "DEMO MODE (MOCK)" : "LIVE JEV API"}
+                {health.demo_mode ? "DEMO DATA" : "REAL DATA"}
               </span>
             )}
 

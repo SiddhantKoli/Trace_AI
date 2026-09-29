@@ -39,6 +39,11 @@ class Settings(BaseSettings):
 
 settings = Settings()
 
+
+def active_data_mode() -> str:
+    """Return the dataset namespace currently visible in the application."""
+    return "demo" if settings.DEMO_MODE else "real"
+
 # Check if a live API key was explicitly set
 if settings.JEV_API_KEY and settings.JEV_API_KEY.strip() != "":
     settings.DEMO_MODE = False

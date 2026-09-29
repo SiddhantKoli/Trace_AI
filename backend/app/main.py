@@ -3,14 +3,14 @@ from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 
 from app.config import settings
-from app.database import engine, Base
+from app.database import initialize_database
 from app.routes import upload, analysis, incidents, reports, settings as settings_routes, evaluation, samples
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Initialize SQLite database tables on startup
-    Base.metadata.create_all(bind=engine)
+    initialize_database()
     yield
 
 

@@ -30,6 +30,7 @@ export default function SettingsPage() {
   const [settings, setSettings] = useState<SettingsData | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [modeSaving, setModeSaving] = useState(false);
   const [savedSuccess, setSavedSuccess] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
@@ -117,6 +118,26 @@ export default function SettingsPage() {
     }
   };
 
+  const handleModeToggle = async () => {
+    const nextDemoMode = !demoMode;
+    setModeSaving(true);
+    setSavedSuccess(false);
+    setErrorMessage(null);
+    setDemoMode(nextDemoMode);
+
+    try {
+      const updated = await api.updateSettings({ demo_mode: nextDemoMode });
+      setSettings(updated);
+      setSavedSuccess(true);
+      setTimeout(() => setSavedSuccess(false), 4000);
+    } catch (err: unknown) {
+      setDemoMode(!nextDemoMode);
+      setErrorMessage(err instanceof Error ? err.message : "Failed to change data mode");
+    } finally {
+      setModeSaving(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[50vh] gap-3">
@@ -169,7 +190,7 @@ export default function SettingsPage() {
                   : "bg-emerald-950/40 text-emerald-300 border-emerald-800/50"
               }`}
             >
-              {settings?.demo_mode ? "Operating in Demo Mode" : "Operating with Live Key"}
+              {settings?.demo_mode ? "Operating in Demo Data Mode" : "Operating in Real Data Mode"}
             </span>
           </div>
 
@@ -211,24 +232,34 @@ export default function SettingsPage() {
               </p>
             </div>
 
-            {/* Demo Mode Toggle */}
-            <div className="pt-2">
-              <label className="flex items-center gap-3 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={demoMode}
-                  onChange={(e) => setDemoMode(e.target.checked)}
-                  className="w-4 h-4 accent-emerald-500 rounded cursor-pointer"
-                />
-                <div>
-                  <span className="text-xs font-semibold text-slate-200 block">
-                    Enable Deterministic Demo Mode
-                  </span>
-                  <span className="text-[11px] text-slate-400 block">
-                    When enabled or when no credentials are provided, TRACE AI uses deterministic sample evaluations. Never fakes live API calls.
-                  </span>
-                </div>
-              </label>
+            {/* Data Mode Toggle */}
+            <div className="pt-2 flex items-center justify-between gap-4">
+              <div>
+                <span className="text-xs font-semibold text-slate-200 block">
+                  Data source mode
+                </span>
+                <span className="text-[11px] text-slate-400 block mt-0.5">
+                  Demo mode shows bundled scenarios. Real mode starts empty and only shows logs you upload.
+                </span>
+              </div>
+              <button
+                type="button"
+                role="switch"
+                aria-checked={demoMode}
+                aria-label="Toggle between Demo Data and Real Data mode"
+                onClick={handleModeToggle}
+                disabled={saving || modeSaving}
+                className="shrink-0 inline-flex items-center gap-2 rounded-md border border-[#2d3544] bg-[#171c25] px-2.5 py-1.5 text-[11px] font-semibold text-slate-200 transition hover:border-emerald-600 disabled:opacity-50"
+              >
+                <span
+                  className={`relative h-4 w-8 rounded-full transition-colors ${demoMode ? "bg-amber-500/80" : "bg-emerald-500/80"}`}
+                >
+                  <span
+                    className={`absolute left-0.5 top-0.5 h-3 w-3 rounded-full bg-white shadow transition-transform ${demoMode ? "" : "translate-x-4"}`}
+                  />
+                </span>
+                <span>{demoMode ? "Demo Data" : "Real Data"}</span>
+              </button>
             </div>
 
             <div className="bg-[#151922] p-3 rounded border border-[#232936] text-[11px] text-slate-400 font-mono flex items-center justify-between">

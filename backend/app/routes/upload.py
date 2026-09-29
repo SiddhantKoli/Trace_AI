@@ -5,7 +5,7 @@ from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form
 from sqlalchemy.orm import Session
 
 from app.database import get_db
-from app.config import settings
+from app.config import active_data_mode, settings
 from app.models import AnalysisRun, LogEntry, Anomaly, Incident, IncidentEvidence, Diagnosis
 from app.parser import LogParser
 from app.anomaly_detector import AnomalyDetector
@@ -35,6 +35,7 @@ async def process_log_pipeline(
         filename=filename,
         file_size_bytes=file_size_bytes,
         status="PROCESSING",
+        data_mode=active_data_mode(),
         start_time=datetime.utcnow()
     )
     db.add(run)
@@ -224,6 +225,12 @@ async def load_sample_log(
     """
     Loads and runs full analysis on a pre-packaged sample dataset.
     """
+    if not settings.DEMO_MODE:
+        raise HTTPException(
+            status_code=409,
+            detail="Demo datasets are disabled in Real Data mode. Upload a real log file instead."
+        )
+
     valid_samples = {
         "database": "database_connection_exhaustion.log",
         "http_500": "http_500_cluster.log",
