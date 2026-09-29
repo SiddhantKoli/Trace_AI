@@ -1,0 +1,11 @@
+2026-09-29 16:30:00.100 [INFO] [batch-worker] Starting scheduled ingestion job job_id=batch_99401 partition=20260929
+2026-09-29 16:30:05.420 [INFO] [batch-worker] Read 250,000 parquet records into buffer memory_usage=1.2GB
+2026-09-29 16:30:10.890 [WARNING] [jvm-monitor] Garbage collection pause time exceeded threshold: GC duration=1420ms (heap: 82% used)
+2026-09-29 16:30:14.200 [WARNING] [batch-worker] Heap memory utilization reached 89.4% (allocated: 3.5GB / max: 4.0GB)
+2026-09-29 16:30:16.850 [WARNING] [jvm-monitor] Major GC (G1 Full GC) triggered. Duration=3890ms. Stop-the-world phase detected.
+2026-09-29 16:30:19.400 [ERROR] [batch-worker] Memory allocation failure: java.lang.OutOfMemoryError: Java heap space
+2026-09-29 16:30:20.150 [CRITICAL] [kernel] oom-killer: gfp_mask=0x100cca(GFP_HIGHUSER_MOVABLE), order=0, oom_score_adj=950
+2026-09-29 16:30:20.155 [CRITICAL] [kernel] Out of memory: Killed process 84920 (batch-worker) total-vm:4412036kB, anon-rss:3984120kB
+2026-09-29 16:30:21.010 [ERROR] [supervisor] Process batch-worker (PID 84920) terminated unexpectedly with exit signal SIGKILL (code 137)
+2026-09-29 16:30:22.300 [CRITICAL] [queue-manager] Job batch_99401 stalled: worker node terminated mid-execution due to Out Of Memory condition
+2026-09-29 16:30:24.100 [WARNING] [node-exporter] Memory cgroup limit exceeded on host worker-node-04 (100% of 4096MB limit consumed)

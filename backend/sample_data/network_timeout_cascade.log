@@ -1,0 +1,11 @@
+2026-09-29 17:15:00.100 [INFO] [order-service] Starting checkout process for cart_id=cart_883190
+2026-09-29 17:15:02.340 [INFO] [payment-service] Initiating downstream settlement call to external-acquirer.bank.com
+2026-09-29 17:15:07.500 [WARNING] [payment-service] TCP connection handshake latency high: 4800ms to endpoint 198.51.100.24:443
+2026-09-29 17:15:12.600 [ERROR] [payment-service] ConnectTimeoutError: HTTPSConnectionPool(host='external-acquirer.bank.com', port=443): Max retries exceeded with url: /v1/charge (Caused by ConnectTimeoutError: connection timed out after 5000ms)
+2026-09-29 17:15:13.100 [WARNING] [circuit-breaker] Circuit breaker for external-acquirer tripped to HALF-OPEN state (consecutive_failures=3)
+2026-09-29 17:15:14.250 [ERROR] [order-service] ReadTimeout: HTTP request to payment-service timed out after 10000ms
+2026-09-29 17:15:15.800 [CRITICAL] [circuit-breaker] Circuit breaker for external-acquirer OPENED: blocking all outbound payment traffic
+2026-09-29 17:15:16.400 [ERROR] [api-gateway] GatewayTimeout: 504 Gateway Timeout on POST /api/v1/orders/checkout
+2026-09-29 17:15:18.900 [CRITICAL] [order-service] Cascade failure: 25 client requests timed out waiting for payment gateway response
+2026-09-29 17:15:20.150 [ERROR] [notification-service] Failed to dispatch SMS receipt: network socket write timeout
+2026-09-29 17:15:22.000 [CRITICAL] [network-mesh] Inter-service packet loss surged to 28% across external egress gateway

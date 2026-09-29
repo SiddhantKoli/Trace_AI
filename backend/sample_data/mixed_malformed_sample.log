@@ -1,0 +1,7 @@
+2026-09-29 19:00:01.000 [INFO] [web-server] Valid request GET /index.html 200 OK
+INVALID_LOG_LINE_WITHOUT_TIMESTAMP_OR_SEVERITY_BLAH_BLAH_BLAH
+2026-09-29 19:00:03.500 [ERROR] [auth-service] Login failed for user admin: bad credentials
+THIS IS ANOTHER CORRUPTED LOG ENTRY MISSING EVERYTHING
+2026-09-29 19:00:05.100 [WARNING] [cache] Cache miss for session token
+random garbage payload bytes \x00\x01\x02\x03\xff
+2026-09-29 19:00:07.900 [INFO] [web-server] Valid request GET /api/status 200 OK

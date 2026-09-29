@@ -1,0 +1,20 @@
+2026-09-29 14:00:01.120 [INFO] [order-service] Processed order #10492 successfully status=COMPLETED latency=42ms
+2026-09-29 14:00:03.450 [INFO] [payment-gateway] Payment intent pi_99201 confirmed for amount=$49.99
+2026-09-29 14:00:05.810 [INFO] [auth-service] User session validated token_id=tok_88192 user=alice@example.com
+2026-09-29 14:00:08.200 [INFO] [catalog-service] Query cache hit for category=electronics items=24
+2026-09-29 14:00:12.330 [INFO] [order-service] Processed order #10493 successfully status=COMPLETED latency=48ms
+2026-09-29 14:00:15.600 [INFO] [inventory-service] Reserved stock sku=KB-900 quantity=1 warehouse=central
+2026-09-29 14:00:20.100 [WARNING] [postgres-primary] Active connection count reached 92/100 threshold=90%
+2026-09-29 14:00:22.440 [WARNING] [order-service] Database connection checkout time exceeded 250ms (actual: 310ms)
+2026-09-29 14:00:25.105 [WARNING] [payment-gateway] Database acquire connection timeout approaching limit: wait_time=850ms
+2026-09-29 14:00:28.900 [ERROR] [postgres-primary] FATAL: remaining connection slots are reserved for non-replication superuser connections
+2026-09-29 14:00:29.012 [ERROR] [order-service] sqlalchemy.exc.OperationalError: (psycopg2.OperationalError) connection pool exhausted: max=20, overflow=10, timeout=5.0s
+2026-09-29 14:00:29.350 [ERROR] [payment-gateway] DatabaseError: could not obtain connection from pool within 5000ms; failing transaction txn_4491
+2026-09-29 14:00:30.120 [CRITICAL] [order-service] Failed to persist checkout transaction for user_id=98211. Transaction aborted due to database connection exhaustion
+2026-09-29 14:00:30.500 [ERROR] [inventory-service] Database pool timeout: unable to release lock on sku=KB-900
+2026-09-29 14:00:31.210 [CRITICAL] [api-gateway] Upstream service /api/v1/checkout returned HTTP 503 Service Unavailable: database pool starved
+2026-09-29 14:00:32.400 [ERROR] [order-service] PoolTimeoutError: QueuePool limit of size 20 overflow 10 reached, connection timed out
+2026-09-29 14:00:33.800 [CRITICAL] [payment-gateway] Aborting payment webhook dispatch: database write failed
+2026-09-29 14:00:35.050 [WARNING] [health-check] Health check degraded: database connection latency > 5000ms
+2026-09-29 14:00:36.190 [ERROR] [customer-service] Failed to query user profile: connection pool exhausted
+2026-09-29 14:00:38.000 [CRITICAL] [api-gateway] 18 requests dropped with 503 Service Unavailable in last 10s

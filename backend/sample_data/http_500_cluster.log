@@ -1,0 +1,15 @@
+2026-09-29 15:10:00.010 [INFO] [deploy-runner] Deployment canary completed for service recommendation-engine version=v2.4.1
+2026-09-29 15:10:05.150 [INFO] [api-gateway] Routing 10% production traffic to recommendation-engine v2.4.1
+2026-09-29 15:10:08.300 [INFO] [recommendation-engine] Initializing model cache for user cohort=US_EAST
+2026-09-29 15:10:12.450 [ERROR] [recommendation-engine] Unhandled KeyError: 'user_preferences' in pipeline/feature_extractor.py:142
+2026-09-29 15:10:12.455 [ERROR] [api-gateway] Upstream /api/v2/recommendations returned HTTP 500 Internal Server Error (req_id=req_a98f12)
+2026-09-29 15:10:13.100 [ERROR] [recommendation-engine] TypeError: Cannot read property 'preferences' of undefined at Object.renderFeed (recommendations.ts:88)
+2026-09-29 15:10:13.210 [ERROR] [api-gateway] Upstream /api/v2/recommendations returned HTTP 500 Internal Server Error (req_id=req_a98f13)
+2026-09-29 15:10:14.050 [CRITICAL] [recommendation-engine] Repeated unhandled exception spike: 42 errors in 2 seconds on endpoint /api/v2/recommendations
+2026-09-29 15:10:14.300 [ERROR] [api-gateway] Upstream /api/v2/recommendations returned HTTP 500 Internal Server Error (req_id=req_a98f14)
+2026-09-29 15:10:15.550 [ERROR] [api-gateway] Upstream /api/v2/recommendations returned HTTP 500 Internal Server Error (req_id=req_a98f15)
+2026-09-29 15:10:16.800 [CRITICAL] [api-gateway] HTTP 500 error rate breached SLO limit (5.8% > threshold 0.1%)
+2026-09-29 15:10:17.120 [ERROR] [frontend-bff] Failed to hydrate personalized widgets for user 88319 due to downstream 500
+2026-09-29 15:10:18.400 [ERROR] [recommendation-engine] Traceback (most recent call last): File "server.py", line 98, in handle KeyError: 'user_preferences'
+2026-09-29 15:10:19.900 [WARNING] [load-balancer] Marking recommendation-engine pod-7f99b unhealthy due to 5xx response code surge
+2026-09-29 15:10:21.050 [CRITICAL] [alert-manager] P1 Incident candidate: Surge in HTTP 500 responses affecting 1500+ users
