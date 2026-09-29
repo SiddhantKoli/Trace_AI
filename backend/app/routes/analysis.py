@@ -29,6 +29,33 @@ def list_analysis_runs(
     return runs
 
 
+@router.delete("/real-data")
+def clear_real_data(db: Session = Depends(get_db)):
+    """Delete uploaded real-data runs and every record attached to them."""
+    if active_data_mode() != "real":
+        raise HTTPException(
+            status_code=409,
+            detail="Real data can only be cleared while Real Data mode is active",
+        )
+
+    runs = db.query(AnalysisRun).filter(AnalysisRun.data_mode == "real").all()
+    deleted_counts = {
+        "runs": len(runs),
+        "logs": sum(len(run.logs) for run in runs),
+        "anomalies": sum(len(run.anomalies) for run in runs),
+        "incidents": sum(len(run.incidents) for run in runs),
+    }
+
+    for run in runs:
+        db.delete(run)
+    db.commit()
+
+    return {
+        "message": "All real data cleared",
+        "deleted": deleted_counts,
+    }
+
+
 @router.get("/runs/{run_id}", response_model=AnalysisRunDetail)
 def get_analysis_run(run_id: str, db: Session = Depends(get_db)):
     """Fetches comprehensive details for a specific run."""

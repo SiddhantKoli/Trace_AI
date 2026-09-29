@@ -191,6 +191,18 @@ export const api = {
     return res.json();
   },
 
+  async clearRealData(): Promise<{
+    message: string;
+    deleted: { runs: number; logs: number; anomalies: number; incidents: number };
+  }> {
+    const res = await fetch(`${API_BASE}/analysis/real-data`, { method: "DELETE" });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ detail: "Failed to clear real data" }));
+      throw new Error(err.detail || "Failed to clear real data");
+    }
+    return res.json();
+  },
+
   async getRun(runId: string): Promise<any> {
     const res = await fetch(`${API_BASE}/analysis/runs/${runId}`, { cache: "no-store" });
     if (!res.ok) throw new Error("Failed to fetch run detail");

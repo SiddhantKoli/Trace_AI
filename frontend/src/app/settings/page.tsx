@@ -31,7 +31,9 @@ export default function SettingsPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [modeSaving, setModeSaving] = useState(false);
+  const [clearingRealData, setClearingRealData] = useState(false);
   const [savedSuccess, setSavedSuccess] = useState(false);
+  const [successMessage, setSuccessMessage] = useState("Configuration saved successfully. System parameters updated.");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   // Form states
@@ -76,6 +78,7 @@ export default function SettingsPage() {
     e.preventDefault();
     setSaving(true);
     setSavedSuccess(false);
+    setSuccessMessage("Configuration saved successfully. System parameters updated.");
     setErrorMessage(null);
 
     try {
@@ -102,6 +105,7 @@ export default function SettingsPage() {
   const handleClearApiKey = async () => {
     setSaving(true);
     setSavedSuccess(false);
+    setSuccessMessage("Configuration saved successfully. System parameters updated.");
     setErrorMessage(null);
 
     try {
@@ -122,6 +126,7 @@ export default function SettingsPage() {
     const nextDemoMode = !demoMode;
     setModeSaving(true);
     setSavedSuccess(false);
+    setSuccessMessage("Data source mode changed successfully.");
     setErrorMessage(null);
     setDemoMode(nextDemoMode);
 
@@ -135,6 +140,27 @@ export default function SettingsPage() {
       setErrorMessage(err instanceof Error ? err.message : "Failed to change data mode");
     } finally {
       setModeSaving(false);
+    }
+  };
+
+  const handleClearRealData = async () => {
+    if (!window.confirm("Clear all uploaded real data? This removes real-mode runs, logs, anomalies, and incidents. Demo data will not be affected.")) {
+      return;
+    }
+
+    setClearingRealData(true);
+    setSavedSuccess(false);
+    setErrorMessage(null);
+
+    try {
+      const result = await api.clearRealData();
+      setSuccessMessage(`Cleared ${result.deleted.runs} real data run${result.deleted.runs === 1 ? "" : "s"}.`);
+      setSavedSuccess(true);
+      setTimeout(() => setSavedSuccess(false), 4000);
+    } catch (err: unknown) {
+      setErrorMessage(err instanceof Error ? err.message : "Failed to clear real data");
+    } finally {
+      setClearingRealData(false);
     }
   };
 
@@ -162,7 +188,7 @@ export default function SettingsPage() {
       {savedSuccess && (
         <div className="p-3 bg-emerald-950/40 border border-emerald-800/60 rounded-md text-xs text-emerald-300 flex items-center gap-2">
           <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
-          <span>Configuration saved successfully. System parameters updated.</span>
+          <span>{successMessage}</span>
         </div>
       )}
 
@@ -266,6 +292,26 @@ export default function SettingsPage() {
               <span>Endpoint: {settings?.jev_api_url}</span>
               <span className="text-emerald-400">Primitive: System One (Choice, Noul, Score)</span>
             </div>
+
+            {!demoMode && (
+              <div className="border-t border-[#222733] pt-4 flex items-center justify-between gap-4">
+                <div>
+                  <span className="text-xs font-semibold text-rose-200 block">Clear uploaded real data</span>
+                  <span className="text-[11px] text-slate-400 block mt-0.5">
+                    Removes real-mode runs, logs, anomalies, and incidents. Demo data is kept.
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  onClick={handleClearRealData}
+                  disabled={clearingRealData || saving || modeSaving}
+                  className="shrink-0 inline-flex items-center gap-2 rounded-md border border-rose-800/70 bg-rose-950/30 px-2.5 py-1.5 text-[11px] font-semibold text-rose-200 transition hover:border-rose-500 hover:bg-rose-950/60 disabled:opacity-50"
+                >
+                  {clearingRealData ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}
+                  {clearingRealData ? "Clearing..." : "Clear Real Data"}
+                </button>
+              </div>
+            )}
           </div>
         </div>
 
