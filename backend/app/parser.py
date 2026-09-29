@@ -2,7 +2,7 @@ import re
 import csv
 import json
 from io import StringIO
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import List, Dict, Any, Tuple, Optional
 
 # Regular expressions for log formats
@@ -41,12 +41,19 @@ def sanitize_message(text: str) -> str:
     return sanitized
 
 
+def _as_utc_naive(value: datetime) -> datetime:
+    """Store timestamps as UTC without tzinfo for SQLite compatibility."""
+    if value.tzinfo is None:
+        return value
+    return value.astimezone(timezone.utc).replace(tzinfo=None)
+
+
 def parse_timestamp(ts_str: str) -> Optional[datetime]:
-    """Attempts to parse string timestamp into datetime object."""
+    """Parse a timestamp and normalize offset-bearing values to UTC."""
     clean_ts = ts_str.strip()
     for fmt in TIMESTAMP_FORMATS:
         try:
-            return datetime.strptime(clean_ts, fmt)
+            return _as_utc_naive(datetime.strptime(clean_ts, fmt))
         except ValueError:
             continue
     # Try ISO fromisoformat for modern python
@@ -54,7 +61,7 @@ def parse_timestamp(ts_str: str) -> Optional[datetime]:
         # replace Z with +00:00 for fromisoformat
         if clean_ts.endswith("Z"):
             clean_ts = clean_ts[:-1] + "+00:00"
-        return datetime.fromisoformat(clean_ts).replace(tzinfo=None)
+        return _as_utc_naive(datetime.fromisoformat(clean_ts))
     except Exception:
         pass
     return None

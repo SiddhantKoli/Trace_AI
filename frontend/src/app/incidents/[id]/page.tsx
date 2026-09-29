@@ -23,6 +23,7 @@ import { api, Incident } from "@/lib/api";
 import { SeverityBadge } from "@/components/SeverityBadge";
 import { CategoryBadge } from "@/components/CategoryBadge";
 import { StatusBadge } from "@/components/StatusBadge";
+import { formatUtcTimestamp, formatUtcTime } from "@/lib/time";
 
 export default function IncidentDetailPage() {
   const params = useParams();
@@ -111,9 +112,9 @@ export default function IncidentDetailPage() {
       <div className="bg-[#12151b] border border-[#222733] rounded-lg p-6">
         <div className="flex flex-wrap items-center justify-between gap-3 mb-3">
           <div className="flex items-center gap-2">
-            <SeverityBadge severity={incident.severity} size="md" />
-            <CategoryBadge category={incident.category} />
-            <StatusBadge status={incident.status} />
+            <div className="space-y-1"><span className="block text-[10px] uppercase text-slate-500">Severity</span><SeverityBadge severity={incident.severity} size="md" /></div>
+            <div className="space-y-1"><span className="block text-[10px] uppercase text-slate-500">Category</span><CategoryBadge category={incident.category} /></div>
+            <div className="space-y-1"><span className="block text-[10px] uppercase text-slate-500">Status</span><StatusBadge status={incident.status} /></div>
           </div>
 
           {/* Status selector */}
@@ -140,7 +141,7 @@ export default function IncidentDetailPage() {
         <div className="flex flex-wrap items-center gap-4 text-xs text-slate-400 mb-4 font-mono">
           <span className="flex items-center gap-1">
             <Calendar className="w-3.5 h-3.5 text-slate-400" />
-            {incident.detected_time ? new Date(incident.detected_time).toLocaleString() : "N/A"}
+            {formatUtcTimestamp(incident.detected_time)}
           </span>
           <span>&bull;</span>
           <span>Incident ID: {incident.id.substring(0, 12)}...</span>
@@ -175,9 +176,9 @@ export default function IncidentDetailPage() {
 
           <div className="flex items-center gap-3">
             <div className="text-right">
-              <span className="text-[11px] text-slate-400 block">Model Confidence</span>
-              <span className="text-base font-mono font-bold text-emerald-400">
-                {Math.round(incident.confidence * 100)}%
+              <span className="text-[11px] text-slate-400 block">{isDemo ? "Heuristic score" : "Model-reported score"}</span>
+              <span className="text-base font-mono font-bold text-amber-300">
+                {Math.round(incident.confidence * 100)}/100
               </span>
             </div>
           </div>
@@ -261,7 +262,7 @@ export default function IncidentDetailPage() {
             <tbody className="divide-y divide-[#1e232d] font-mono text-[11px]">
               {incident.evidence.map((ev, idx) => {
                 const log = ev.log;
-                const timeStr = log?.timestamp ? log.timestamp.substring(11, 19) : "N/A";
+                const timeStr = formatUtcTime(log?.timestamp);
                 return (
                   <tr key={ev.id || idx} className="hover:bg-[#161a22] transition">
                     <td className="py-2 px-3 text-slate-400 whitespace-nowrap">

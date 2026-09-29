@@ -18,6 +18,7 @@ import { api, Incident } from "@/lib/api";
 import { SeverityBadge } from "@/components/SeverityBadge";
 import { CategoryBadge } from "@/components/CategoryBadge";
 import { StatusBadge } from "@/components/StatusBadge";
+import { formatUtcTimestamp } from "@/lib/time";
 
 export default function IncidentsPage() {
   const [incidents, setIncidents] = useState<Incident[]>([]);
@@ -147,14 +148,14 @@ export default function IncidentsPage() {
             >
               <div>
                 <div className="flex flex-wrap items-center justify-between gap-2 mb-2.5">
-                  <div className="flex items-center gap-2">
-                    <SeverityBadge severity={inc.severity} size="md" />
-                    <CategoryBadge category={inc.category} />
-                    <StatusBadge status={inc.status} />
+                  <div className="flex flex-wrap items-end gap-3">
+                    <div className="space-y-1"><span className="block text-[9px] uppercase tracking-wide text-slate-500">Severity</span><SeverityBadge severity={inc.severity} size="md" /></div>
+                    <div className="space-y-1"><span className="block text-[9px] uppercase tracking-wide text-slate-500">Category</span><CategoryBadge category={inc.category} /></div>
+                    <div className="space-y-1"><span className="block text-[9px] uppercase tracking-wide text-slate-500">Status</span><StatusBadge status={inc.status} /></div>
                   </div>
                   <div className="text-[11px] text-slate-400 font-mono flex items-center gap-1.5">
                     <Calendar className="w-3.5 h-3.5 text-slate-400" />
-                    {inc.detected_time ? new Date(inc.detected_time).toLocaleString() : "N/A"}
+                    {formatUtcTimestamp(inc.detected_time)}
                   </div>
                 </div>
 
@@ -173,8 +174,10 @@ export default function IncidentsPage() {
                       <span className="font-semibold text-slate-200">
                         Evidence-based hypothesis: <span className="text-amber-300">{inc.diagnosis.possible_cause}</span>
                       </span>
-                      <span className="font-mono text-emerald-400 font-bold">
-                        {(inc.diagnosis.confidence * 100).toFixed(0)}% Confidence
+                      <span className="font-mono text-amber-300 font-bold">
+                        {inc.diagnosis.is_demo_mode
+                          ? `Heuristic score: ${Math.round(inc.diagnosis.confidence * 100)}/100`
+                          : `Model-reported score: ${Math.round(inc.diagnosis.confidence * 100)}/100`}
                       </span>
                     </div>
                     <p className="text-[11px] text-slate-400 line-clamp-2">

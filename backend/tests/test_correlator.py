@@ -126,3 +126,37 @@ def test_correlator_does_not_merge_unrelated_categories_by_time_alone():
     )
 
     assert len(incidents) == 2
+
+
+def test_correlator_keeps_different_same_service_signatures_separate():
+    correlator = IncidentCorrelator(window_seconds=60)
+    base_time = datetime(2026, 9, 29, 14, 0, 0)
+    entries = [
+        {
+            "line_number": 1,
+            "timestamp": base_time,
+            "severity": "ERROR",
+            "service": "auth-service",
+            "message": "Failed login for user 42",
+            "raw_text": "log1",
+        },
+        {
+            "line_number": 2,
+            "timestamp": base_time + timedelta(seconds=2),
+            "severity": "ERROR",
+            "service": "auth-service",
+            "message": "Account locked after too many login attempts",
+            "raw_text": "log2",
+        },
+    ]
+
+    incidents = correlator.correlate(
+        entries,
+        [{"is_anomaly": True, "anomaly_score": 0.9}] * 2,
+    )
+
+    assert len(incidents) == 2
+    assert {incident["event_signatures"][0] for incident in incidents} == {
+        "authentication_failure",
+        "account_lockout",
+    }

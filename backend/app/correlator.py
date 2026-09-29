@@ -34,6 +34,29 @@ def infer_preliminary_category(text: str) -> str:
     return "unknown"
 
 
+def infer_event_signature(entry: Dict[str, Any]) -> str:
+    """Classify the concrete event pattern used to keep unlike events apart."""
+    text = str(entry.get("message", "")).lower()
+    if any(token in text for token in ("failed login", "login failed", "invalid password", "authentication failure")):
+        return "authentication_failure"
+    if any(token in text for token in ("account locked", "account lockout", "too many login attempts")):
+        return "account_lockout"
+    if any(token in text for token in ("order created", "order creation", "order completed", "purchase completed")):
+        return "order_activity"
+    if any(token in text for token in ("connection pool", "connection slots", "deadlock", "query timeout")):
+        return "database_failure"
+    if any(token in text for token in ("timeout", "timed out", "connection reset", "circuit breaker")):
+        return "network_timeout"
+    if any(token in text for token in ("outofmemory", "heap space", "oom", "memory usage", "memory pressure")):
+        return "memory_exhaustion"
+    if any(token in text for token in (
+        "http 5", "status 5", "500", "5xx", "internal server error",
+        "exception", "traceback", "keyerror", "typeerror", "unhandled",
+    )):
+        return "application_exception"
+    return infer_preliminary_category(text)
+
+
 def _as_service_names(value: Any) -> List[str]:
     if isinstance(value, str):
         return [value]
@@ -135,23 +158,20 @@ class IncidentCorrelator:
             time_gap = (cand["entry"]["timestamp"] - prev_cand["entry"]["timestamp"]).total_seconds()
 
             current_services = {item["entry"]["service"] for item in current_cluster}
-            current_categories = {
-                infer_preliminary_category(item["entry"]["message"])
+            current_signatures = {
+                infer_event_signature(item["entry"])
                 for item in current_cluster
             }
             candidate_service = cand["entry"]["service"]
             candidate_category = infer_preliminary_category(cand["entry"]["message"])
+            candidate_signature = infer_event_signature(cand["entry"])
             shares_dependency = any(
                 (edge["source"] == candidate_service and edge["target"] in current_services)
                 or (edge["target"] == candidate_service and edge["source"] in current_services)
                 for edge in dependency_graph
             )
             same_signal = (
-                candidate_service in current_services
-                or (
-                    candidate_category != "unknown"
-                    and candidate_category in current_categories
-                )
+                candidate_signature in current_signatures
                 or shares_dependency
             )
 
@@ -186,6 +206,7 @@ class IncidentCorrelator:
             services = sorted(list(set(c["entry"]["service"] for c in cluster)))
             severities = [c["entry"]["severity"] for c in cluster]
             cluster_services = set(services)
+            cluster_signatures = sorted({infer_event_signature(c["entry"]) for c in cluster})
             cluster_dependencies = [
                 edge for edge in dependency_graph
                 if edge["source"] in cluster_services and edge["target"] in cluster_services
@@ -217,7 +238,18 @@ class IncidentCorrelator:
             # Titles describe observed category and grouping only. They do not
             # imply a cascade unless an explicit dependency edge was observed.
             primary_service = services[0] if services else "system"
-            if category == "database":
+            signature_titles = {
+                "authentication_failure": "Authentication failure signals",
+                "account_lockout": "Account lockout signals",
+                "order_activity": "Order activity signals",
+                "network_timeout": "Network timeout signals",
+                "memory_exhaustion": "Memory exhaustion signals",
+                "application_exception": "Application exception signals",
+                "database_failure": "Database connection signals",
+            }
+            if len(cluster_signatures) == 1 and cluster_signatures[0] in signature_titles:
+                title = f"{signature_titles[cluster_signatures[0]]} in [{', '.join(services[:3])}]"
+            elif category == "database":
                 title = f"Database-related incident candidate in [{', '.join(services[:2])}]"
             elif category == "resource_exhaustion":
                 title = f"Resource exhaustion incident candidate in [{primary_service}]"
@@ -277,6 +309,7 @@ class IncidentCorrelator:
                 "detected_time": first_time,
                 "summary": summary,
                 "services": services,
+                "event_signatures": cluster_signatures,
                 "dependency_edges": cluster_dependencies,
                 "correlation_basis": "explicit_dependency_and_temporal" if cluster_dependencies else "temporal_and_error_burst",
                 "evidence_items": evidence_items

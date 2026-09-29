@@ -21,6 +21,11 @@ def test_normalize_severity():
     assert normalize_severity("unknown") == "INFO"
 
 
+def test_parse_timestamp_normalizes_offsets_to_utc():
+    assert parse_timestamp("2026-09-29T14:00:00+02:00") == datetime(2026, 9, 29, 12, 0, 0)
+    assert parse_timestamp("2026-09-29T14:00:00Z") == datetime(2026, 9, 29, 14, 0, 0)
+
+
 def test_parse_standard_text_logs():
     parser = LogParser()
     content = """

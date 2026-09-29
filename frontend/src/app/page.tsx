@@ -199,7 +199,7 @@ export default function OverviewPage() {
               <div className="text-2xl font-bold text-amber-400 font-mono">
                 {stats.total_anomalies_detected.toLocaleString()}
               </div>
-              <p className="text-[11px] text-slate-400 mt-1">Isolation Forest outliers (score &gt; 0.7)</p>
+              <p className="text-[11px] text-slate-400 mt-1">Isolation Forest model-flagged outliers</p>
             </div>
 
             <div className="bg-[#12151b] border border-[#222733] rounded-lg p-4">
@@ -351,7 +351,9 @@ export default function OverviewPage() {
                           {inc.diagnosis?.possible_cause || "Analyzing..."}
                         </td>
                         <td className="py-3 px-4 font-mono text-emerald-400">
-                          {Math.round(inc.confidence * 100)}%
+                          {inc.diagnosis?.is_demo_mode
+                            ? `${Math.round(inc.confidence * 100)}/100 heuristic`
+                            : `${Math.round(inc.confidence * 100)}/100 model-reported`}
                         </td>
                         <td className="py-3 px-4">
                           <StatusBadge status={inc.status} />
